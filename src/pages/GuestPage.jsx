@@ -23,7 +23,6 @@ function GuestPage() {
   // --- SHOUTOUT STATE ---
   const [shoutName, setShoutName] = useState('')
   const [shoutMessage, setShoutMessage] = useState('')
-  const [shoutTipped, setShoutTipped] = useState(false)
   const [shoutSubmitted, setShoutSubmitted] = useState(false)
   const [shoutError, setShoutError] = useState('')
 
@@ -70,7 +69,6 @@ function handleTipClick() {
 async function handleShoutSubmit() {
     if (!shoutName.trim()) { setShoutError('Your name is required'); return }
     if (!shoutMessage.trim()) { setShoutError('Message is required'); return }
-    if (!shoutTipped) { setShoutError('Please send a tip first!'); return }
     setShoutError('')
     try {
       await addDoc(collection(db, "shoutouts"), {
@@ -141,7 +139,7 @@ async function handleShoutSubmit() {
         )}
       </div>
 
-      {/* ── SECTION 2: SHOUT OUT ── */}
+        {/* ── SECTION 2: SHOUT OUT ── */}
       <div className="w-full max-w-md mb-10">
         <div className="flex items-center gap-2 mb-3">
           <p className="text-xs uppercase tracking-widest text-gray-500">Shout Out</p>
@@ -155,7 +153,15 @@ async function handleShoutSubmit() {
               <p className="text-green-300 font-bold text-lg">Shout out sent!</p>
               <p className="text-green-500 text-sm mt-1">Hexx got your message</p>
             </div>
-            <a href={INSTAGRAM} target="_blank" className="block w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+            <a
+              href={CASHAPP}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-lg mb-3 transition-all"
+            >
+              💵 Send Hexx a Tip!
+            </a>
+            <a href={INSTAGRAM} target="_blank" className="block w-full text-center bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
               📸 Follow @escandalolv on Instagram
             </a>
           </div>
@@ -175,27 +181,17 @@ async function handleShoutSubmit() {
               rows="3"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 resize-none mb-3"
             />
-<a           
-href={CASHAPP}
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={() => setShoutTipped(true)}
-  className={`block w-full text-center font-bold py-3 rounded-xl text-sm mb-2 transition-all ${shoutTipped ? 'bg-green-800 border border-green-600 text-green-300' : 'bg-green-700 hover:bg-green-600 text-white'}`}
->
-  {shoutTipped ? '✓ Tip sent on CashApp' : '💵 Send tip on CashApp first'}
-</a>
+            <p className="text-yellow-400 text-xs text-center mb-2">💰 A tip is required for shout outs to be read</p>
             <button
               onClick={handleShoutSubmit}
-              disabled={!shoutTipped}
-              className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${shoutTipped ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+              className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-4 rounded-xl text-lg transition-all"
             >
-              Submit Shout Out 📣
+              Send Shout Out 📣
             </button>
             {shoutError && <p className="text-red-400 text-xs mt-2">{shoutError}</p>}
           </>
         )}
       </div>
-
       {/* ── SECTION 3: SONG SUGGESTION ── */}
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-3">
