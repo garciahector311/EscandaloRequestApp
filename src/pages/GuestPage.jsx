@@ -62,9 +62,9 @@ function GuestPage() {
     setVoteCooldown(true)
   }
 
-  function handleTipClick() {
-    window.open(CASHAPP, '_blank')
+function handleTipClick() {
     setShoutTipped(true)
+    window.open(CASHAPP, '_blank', 'noopener')
   }
 
 async function handleShoutSubmit() {
@@ -175,12 +175,15 @@ async function handleShoutSubmit() {
               rows="3"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 resize-none mb-3"
             />
-            <button
-              onClick={handleTipClick}
-              className={`w-full font-bold py-3 rounded-xl text-sm mb-2 transition-all ${shoutTipped ? 'bg-green-800 border border-green-600 text-green-300' : 'bg-green-700 hover:bg-green-600 text-white'}`}
-            >
-              {shoutTipped ? '✓ Tip sent on CashApp' : '💵 Send tip on CashApp first'}
-            </button>
+<a           
+href={CASHAPP}
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() => setShoutTipped(true)}
+  className={`block w-full text-center font-bold py-3 rounded-xl text-sm mb-2 transition-all ${shoutTipped ? 'bg-green-800 border border-green-600 text-green-300' : 'bg-green-700 hover:bg-green-600 text-white'}`}
+>
+  {shoutTipped ? '✓ Tip sent on CashApp' : '💵 Send tip on CashApp first'}
+</a>
             <button
               onClick={handleShoutSubmit}
               disabled={!shoutTipped}
