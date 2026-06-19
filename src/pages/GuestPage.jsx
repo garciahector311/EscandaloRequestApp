@@ -1,170 +1,253 @@
-import {useState,useEffect} from 'react'
-import { collection, addDoc, serverTimestamp, onSnapshot  } from "firebase/firestore";
+import { useState, useEffect } from 'react'
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "../firebase.js"
 
-function GuestPage(){
-    const [userChoice, setUserChoice] = useState('request')
-    const [artistNameInput, setArtistNameInput] = useState('')
-    const [songNameInput, setSongNameInput] = useState('')
-    const [guestNameInput, setGuestNameInput] = useState('')
-    const [commentInput, setCommentInput] = useState('')
-    const [isSubmitted, setIsSubmitted] =useState(false)
-    const [emptyInputError, setEmptyInputError] = useState("")
-    const [requestsNum, setRequestsNum] = useState(0)
+const GENRES = [
+  { id: 'cumbia', label: 'Cumbia', emoji: '🥁', hint: 'Sonidera · Tropical · Norteño' },
+  { id: 'regional', label: 'Regional', emoji: '🤠', hint: 'Quebradita · Zapateado' },
+  { id: 'merengue', label: 'Merengue', emoji: '🎺', hint: 'La Vaca · Suavemente' },
+  { id: 'reggaeton', label: 'Reggaeton', emoji: '🔥', hint: 'Bad Bunny · Perreo · Old School' },
+  { id: 'english', label: 'English', emoji: '🎤', hint: 'Hip-Hop · Pop · EDM' },
+]
 
-    async function handleSubmit(){
-        if(guestNameInput === ""){
-            setEmptyInputError("Your Name is Required")
-            return
-        }
-        if(userChoice === "request" && songNameInput === ""){
-            setEmptyInputError("Song Name Required")
-            return
-        }
-        if(userChoice === "request" && artistNameInput === ""){
-            setEmptyInputError("Artist Name Required")
-            return
-        }
+const CASHAPP = "https://cash.app/$escandalolv"
+const INSTAGRAM = "https://www.instagram.com/escandalolv/"
+const VOTE_COOLDOWN_MS = 30 * 60 * 1000 // 30 minutes
 
-        await addDoc(collection(db, "requests"), {
-            artistName: artistNameInput,
-            songName: songNameInput,
-            guestName: guestNameInput,
-            comment: commentInput,
-            userChoice: userChoice,
-            createdAt: serverTimestamp()
-        })
-        setIsSubmitted(true)
+function GuestPage() {
+  // --- GENRE VOTE STATE ---
+  const [selectedGenre, setSelectedGenre] = useState(null)
+  const [voteConfirmed, setVoteConfirmed] = useState(false)
+  const [voteCooldown, setVoteCooldown] = useState(false)
+
+  // --- SHOUTOUT STATE ---
+  const [shoutName, setShoutName] = useState('')
+  const [shoutMessage, setShoutMessage] = useState('')
+  const [shoutTipped, setShoutTipped] = useState(false)
+  const [shoutSubmitted, setShoutSubmitted] = useState(false)
+  const [shoutError, setShoutError] = useState('')
+
+  // --- SUGGESTION STATE ---
+  const [suggestArtist, setSuggestArtist] = useState('')
+  const [suggestSong, setSuggestSong] = useState('')
+  const [suggestName, setSuggestName] = useState('')
+  const [suggestSubmitted, setSuggestSubmitted] = useState(false)
+  const [suggestError, setSuggestError] = useState('')
+
+  // Check localStorage on load for vote cooldown
+  useEffect(() => {
+    const lastVote = localStorage.getItem('escandalo_last_vote')
+    if (lastVote) {
+      const elapsed = Date.now() - parseInt(lastVote)
+      if (elapsed < VOTE_COOLDOWN_MS) {
+        const savedGenre = localStorage.getItem('escandalo_voted_genre')
+        setSelectedGenre(savedGenre)
+        setVoteConfirmed(true)
+        setVoteCooldown(true)
+      }
     }
+  }, [])
 
-    useEffect(() => {
-            const unsubscribe = onSnapshot(collection(db,"requests"), (snapshot) => {
-            const requestNum = snapshot.docs.length
-             setRequestsNum(requestNum)
-            })
-         return unsubscribe
-        }, [])
+  // --- HANDLERS ---
+  async function handleVote(genreId) {
+    if (voteCooldown) return
+    setSelectedGenre(genreId)
+    await addDoc(collection(db, "votes"), {
+      genre: genreId,
+      createdAt: serverTimestamp()
+    })
+    localStorage.setItem('escandalo_last_vote', Date.now().toString())
+    localStorage.setItem('escandalo_voted_genre', genreId)
+    setVoteConfirmed(true)
+    setVoteCooldown(true)
+  }
 
+  function handleTipClick() {
+    window.open(CASHAPP, '_blank')
+    setShoutTipped(true)
+  }
 
-    return(
+async function handleShoutSubmit() {
+    if (!shoutName.trim()) { setShoutError('Your name is required'); return }
+    if (!shoutMessage.trim()) { setShoutError('Message is required'); return }
+    if (!shoutTipped) { setShoutError('Please send a tip first!'); return }
+    setShoutError('')
+    try {
+      await addDoc(collection(db, "shoutouts"), {
+        name: shoutName,
+        message: shoutMessage,
+        createdAt: serverTimestamp()
+      })
+      setShoutSubmitted(true)
+    } catch (err) {
+      setShoutError('Something went wrong: ' + err.message)
+    }
+  }
+
+  async function handleSuggestSubmit() {
+    if (!suggestArtist.trim()) { setSuggestError('Artist name is required'); return }
+    if (!suggestSong.trim()) { setSuggestError('Song name is required'); return }
+    if (!suggestName.trim()) { setSuggestError('Your name is required'); return }
+    setSuggestError('')
+    await addDoc(collection(db, "suggestions"), {
+      artist: suggestArtist,
+      song: suggestSong,
+      name: suggestName,
+      createdAt: serverTimestamp()
+    })
+    setSuggestSubmitted(true)
+  }
+
+  return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center px-4 py-10">
 
-       
+      {/* HEADER */}
+      <h1 className="text-4xl font-bold text-center mb-2 text-purple-400">ESCANDALO! BY HEXX</h1>
+      <p className="text-center text-gray-500 mb-8 text-sm">Control the music tonight</p>
 
-        <h1 className="text-4xl font-bold text-center mb-2 text-purple-400">
-            ESCANDALO! BY HEXX 
-        </h1>
-        <p className="text-center text-gray-400 mb-8 text-sm">
-            Send a Song Request
-        </p>
-        
-        {/* buttons for song request or shout out */}
-        {isSubmitted === true ? (
-            <div className="text-center mt-20">
-                <p className="text-5xl mb-4">🎉</p>
-                <h2 className="text-3xl font-bold text-purple-400 mb-6">Request Sent!</h2>
-                <a className=" mb-4 block w-full text-center mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 rounded-xl text-xl transition-all" 
-        href="https://www.instagram.com/escandalolv/" target="_blank" >Follow Us On Instagram!</a>
-                <p className="w-full block text-center bg-gradient-to-r from-blue-600 to-green-600 text-white font-bold py-4 rounded-xl text-xl transition-all" >{requestsNum} Songs Requested Sent Tonight</p>
-            </div>
-        ) :(
-        <>
-        {/* Type selector */}
-        <div className="flex gap-3 mb-8">
-        <button 
-        onClick={()=>setUserChoice("request")}
-        className={`flex-1 py-4 rounded-xl font-bold text-lg transition-colors ${
-           userChoice === "request"
-            ? "bg-purple-600 text-white"
-            : "bg-gray-800 text-gray-400"
-        }`}
-        >Song Request
-        </button >
-
-        <button
-        onClick={()=>setUserChoice("shoutout")}
-        className={`flex-1 py-4 rounded-xl font-bold text-lg transition-colors ${
-            userChoice === "shoutout"
-            ? "bg-pink-600 text-white"
-            : "bg-gray-800 text-gray-400"
-        }`}
-        >Shout Out
-        </button>
+      {/* ── SECTION 1: GENRE VOTE ── */}
+      <div className="w-full max-w-md mb-10">
+        <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">Vote the vibe</p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          {GENRES.map((genre) => {
+            const isWide = genre.id === 'english'
+            const isSelected = selectedGenre === genre.id
+            return (
+              <button
+                key={genre.id}
+                onClick={() => handleVote(genre.id)}
+                disabled={voteCooldown}
+                className={`
+                  ${isWide ? 'col-span-2' : ''}
+                  rounded-xl py-4 px-3 text-center transition-all
+                  ${isSelected
+                    ? 'bg-green-900 border-2 border-green-500'
+                    : voteCooldown
+                    ? 'bg-gray-900 border border-gray-800 opacity-30 cursor-not-allowed'
+                    : 'bg-gray-800 border border-gray-700 hover:border-purple-500'}
+                `}
+              >
+                <span className="text-2xl block mb-1">{genre.emoji}</span>
+                <span className={`font-bold block text-sm ${isSelected ? 'text-green-300' : 'text-white'}`}>
+                  {genre.label}{isSelected ? ' ✓' : ''}
+                </span>
+                <span className="text-xs text-gray-500 block mt-1">{genre.hint}</span>
+              </button>
+            )
+          })}
         </div>
-        {/* input fields for song requests */}
-        {userChoice === "request" && (
-        <>
-        <div className="mb-4">
-            <label htmlFor='artistName' className="block text-sm text-gray-400 mb-1">Artist Name</label>
-            <input
-            className="block text-sm text-gray-400 mb-1"
-            type="text"
-            placeholder="e.g. Bad Bunny"
-            value={artistNameInput}
-            onChange={(e)=>setArtistNameInput(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-            />
-        </div>
-        <div className="mb-4">
-            <label htmlFor='songName' className="block text-sm text-gray-400 mb-1">Song Name</label>
-            <input
-            id="songName"
-            type="text"
-            placeholder="e.g. Tití Me Preguntó"
-            value={songNameInput}
-            onChange={(e)=>setSongNameInput(e.target.value)}
-           className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-            /> 
-            </div>
-        </> 
+        {voteConfirmed && (
+          <p className="text-center text-green-400 text-xs">Voted! You can update your vote in 30 min</p>
         )}
-        {/* name and comment inputs */}
-        <div  className="mb-4">
-        <label htmlFor='guestName' className="block text-sm text-gray-400 mb-1">Your Name</label>
-        <input
-        id="guestName"
-        type="text"
-        placeholder="What's your name?"
-        value={guestNameInput}
-        onChange={(e)=>setGuestNameInput(e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-        />
-        </div>
-        {/* Comment */}
-        <div className="mb-6">
-        <label htmlFor='commentField' className="block text-sm text-gray-400 mb-1">Comment (Birthday?, Wedding?)</label>
-        <textarea
-        id="commentField"
-        placeholder="Any message for the DJ?" 
-        value={commentInput}
-        onChange={(e)=>setCommentInput(e.target.value)}
-        rows="3"
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 resize-none"
-        />
+      </div>
+
+      {/* ── SECTION 2: SHOUT OUT ── */}
+      <div className="w-full max-w-md mb-10">
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs uppercase tracking-widest text-gray-500">Shout Out</p>
+          <span className="text-xs bg-pink-900 text-pink-300 px-2 py-0.5 rounded-full">Tip required</span>
         </div>
 
-        {/* Error */}
-        {emptyInputError && (
-            <p className="text-red-400 text-sm mb-4">{emptyInputError}</p>)}
-        
-        {/* TIP */}
-        <div className="mb-6">
-        <a className="w-full block text-center bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-bold py-4 rounded-xl text-xl transition-all" 
-        href="https://cash.app/$escandalolv" target="_blank" >Tip the DJ</a>
-        </div>
+        {shoutSubmitted ? (
+          <div className="text-center">
+            <div className="bg-green-900 border border-green-700 rounded-xl p-5 mb-4">
+              <p className="text-3xl mb-2">🎉</p>
+              <p className="text-green-300 font-bold text-lg">Shout out sent!</p>
+              <p className="text-green-500 text-sm mt-1">Hexx got your message</p>
+            </div>
+            <a href={INSTAGRAM} target="_blank" className="block w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+              📸 Follow @escandalolv on Instagram
+            </a>
+          </div>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Your name"
+              value={shoutName}
+              onChange={(e) => setShoutName(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 mb-3"
+            />
+            <textarea
+              placeholder="Your shout out message..."
+              value={shoutMessage}
+              onChange={(e) => setShoutMessage(e.target.value)}
+              rows="3"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 resize-none mb-3"
+            />
+            <button
+              onClick={handleTipClick}
+              className={`w-full font-bold py-3 rounded-xl text-sm mb-2 transition-all ${shoutTipped ? 'bg-green-800 border border-green-600 text-green-300' : 'bg-green-700 hover:bg-green-600 text-white'}`}
+            >
+              {shoutTipped ? '✓ Tip sent on CashApp' : '💵 Send tip on CashApp first'}
+            </button>
+            <button
+              onClick={handleShoutSubmit}
+              disabled={!shoutTipped}
+              className={`w-full font-bold py-3 rounded-xl text-sm transition-all ${shoutTipped ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+            >
+              Submit Shout Out 📣
+            </button>
+            {shoutError && <p className="text-red-400 text-xs mt-2">{shoutError}</p>}
+          </>
+        )}
+      </div>
 
-        {/* Submit */}
-        <button
-        onClick={()=>handleSubmit()}
-        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 rounded-xl text-xl transition-all"
-        >
-        Submit Request 🎵
-        </button>
-        </>  
-        )  
-    }
+      {/* ── SECTION 3: SONG SUGGESTION ── */}
+      <div className="w-full max-w-md">
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs uppercase tracking-widest text-gray-500">Suggest a Song</p>
+          <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">Future sets</span>
+        </div>
+        <p className="text-gray-500 text-xs mb-4">Hexx will review these after the set — no guarantees tonight but your suggestion counts!</p>
+
+        {suggestSubmitted ? (
+          <div className="text-center">
+            <div className="bg-green-900 border border-green-700 rounded-xl p-5 mb-4">
+              <p className="text-3xl mb-2">🎵</p>
+              <p className="text-green-300 font-bold text-lg">Added to the list!</p>
+              <p className="text-green-500 text-sm mt-1">Hexx checks it after the set</p>
+            </div>
+            <a href={INSTAGRAM} target="_blank" className="block w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-xl text-sm transition-all">
+              📸 Follow @escandalolv on Instagram
+            </a>
+          </div>
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Artist name"
+              value={suggestArtist}
+              onChange={(e) => setSuggestArtist(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
+            />
+            <input
+              type="text"
+              placeholder="Song name"
+              value={suggestSong}
+              onChange={(e) => setSuggestSong(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
+            />
+            <input
+              type="text"
+              placeholder="Your name"
+              value={suggestName}
+              onChange={(e) => setSuggestName(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
+            />
+            <button
+              onClick={handleSuggestSubmit}
+              className="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-3 rounded-xl text-sm transition-all"
+            >
+              Add to the List 🎵
+            </button>
+            {suggestError && <p className="text-red-400 text-xs mt-2">{suggestError}</p>}
+          </>
+        )}
+      </div>
+
     </div>
-    )
+  )
 }
 
 export default GuestPage
